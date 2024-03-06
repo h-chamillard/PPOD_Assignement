@@ -1,12 +1,10 @@
 import spacy
-from spacy.pipeline import EntityRuler
 import pandas as pd
 from collections import Counter
-from spacy.tokens import Span
 import re
-import ast
 
-if __name__ == '__main__':
+
+def pii_detection(iteration):
 
     nlp = spacy.load("en_core_web_sm")
 
@@ -25,11 +23,14 @@ if __name__ == '__main__':
     ruler.add_patterns(patterns)
 
 
-    file_path = 'Last_Assignment_Dataset/tripadvisor_hotel_reviews.csv'
-    df = pd.read_csv(file_path)
+    if iteration :
+        df = pd.read_csv('Last_Assignment_Dataset/pii_analysis_transformed.csv')
+    else :
+        file_path = 'Last_Assignment_Dataset/tripadvisor_hotel_reviews.csv'
+        df = pd.read_csv(file_path, nrows=2000)
 
-    df.to_csv("Last_Assignment_Dataset/tripadvisor_short.csv", index=False, sep=';')
-    df = pd.read_csv('Last_Assignment_Dataset/tripadvisor_short.csv', sep=';')
+        df.to_csv("Last_Assignment_Dataset/tripadvisor_short.csv", index=False, sep=';')
+        df = pd.read_csv('Last_Assignment_Dataset/tripadvisor_short.csv', sep=';')
 
 
     def clean_text_from_anonymized_markers(text):
@@ -53,18 +54,16 @@ if __name__ == '__main__':
         'PII': pii_results
     })
 
-    results_df.to_csv('Last_Assignment_Dataset/pii_analysis_results_screenshot.csv', index=False)
+    results_df.to_csv('Last_Assignment_Dataset/pii_analysis_results.csv', index=False)
 
 
     all_pii_entities = []
     for review in df['Review']:
         pii_entities = find_pii(review, nlp)
-        all_pii_entities.extend(pii_entities)  # Accumulez toutes les entités PII pour les compter
+        all_pii_entities.extend(pii_entities)
 
-    # Compter les occurrences de chaque label PII
     pii_counter = Counter([label for text, label in all_pii_entities])
 
-    # Afficher le nombre d'éléments pour chaque label PII
     for label, count in pii_counter.items():
         print(f"{label}: {count}")
 

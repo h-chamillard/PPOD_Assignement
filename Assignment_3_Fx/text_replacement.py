@@ -1,10 +1,5 @@
-import pandas as pd
-import ast
 import re
 import spacy
-from spacy.tokens import Doc
-from anonymizedf.anonymizedf import anonymize
-
 import pandas as pd
 import ast
 from collections import defaultdict
@@ -18,20 +13,18 @@ def extract_entities(pii_list):
 def create_pseudo_map(entities):
     pseudo_map = {}
     counters = defaultdict(int)
-
     for entity, type_ in entities:
         counters[type_] += 1
         if type_ == 'FAMILY_MEMBER' or type_ == 'URL':
             pseudo_map[entity] = f"{type_}"
         else :
             pseudo_map[entity] = f"{type_}_{counters[type_]}"
-
     return pseudo_map
 
 
 def anonymize_review(review, entities, pseudo_map):
     anonymized_review = review
-    for entity, _ in entities:  # Nous n'avons pas besoin du type ici, juste de l'entité
+    for entity, _ in entities:
         if entity in pseudo_map:
             anonymized_entity = f"€€{pseudo_map[entity]}€€"
             anonymized_review = anonymized_review.replace(entity, anonymized_entity)
@@ -41,13 +34,10 @@ def anonymize_review(review, entities, pseudo_map):
 def anonymize_reviews(dataframe):
     dataframe['PII'] = dataframe['PII'].apply(ast.literal_eval)
     dataframe['ENTITIES'] = dataframe['PII'].apply(extract_entities)
-
     all_entities = [entity for sublist in dataframe['ENTITIES'] for entity in sublist]
     pseudo_map = create_pseudo_map(all_entities)
-
     dataframe['Review'] = dataframe.apply(
         lambda row: anonymize_review(row['Review'], row['ENTITIES'], pseudo_map), axis=1)
-
     return dataframe
 
 
@@ -143,20 +133,15 @@ def anonymize_dates_en(text):
                 break
         if not found:
             anonymized_segments.append("€€GeneralDate€€")
-
     return ''.join(anonymized_segments)
 
 
-# Fonction pour lire le fichier et traiter chaque ligne
 def process_file(df):
     nlp = spacy.load("en_core_web_sm")
-
-    # Traitement de chaque ligne
     for index, row in df.iterrows():
         text = row['Review']
         doc = nlp(text)
-
-        anonymized_text = text  # Initialiser avec le texte original
+        anonymized_text = text
         for ent in doc.ents:
             if ent.label_ == "DATE":
                 anonymized_date = anonymize_dates_en(ent.text)
@@ -166,9 +151,7 @@ def process_file(df):
                 anonymized_time = anonymize_time_en(ent.text)
                 anonymized_text = anonymized_text.replace(ent.text, anonymized_time)
 
-        # Mettre à jour le texte anonymisé dans le DataFrame
-        df.at[index, 'Review'] = anonymized_text  # Assurez-vous que cette colonne existe ou est correctement nommée
-
+        df.at[index, 'Review'] = anonymized_text
     return df
 
 
@@ -182,13 +165,14 @@ def clean_reviews_from_markers(dataframe):
     return dataframe
 
 
-if __name__ == '__main__':
+def text_replacement(clean):
     file_path = 'Last_Assignment_Dataset/pii_analysis_results.csv'
     df = pd.read_csv(file_path, nrows=1000)
 
     df = process_file(df)
     df = anonymize_reviews(df)
 
-    # df = clean_reviews_from_markers(df)
+    if clean :
+        df = clean_reviews_from_markers(df)
 
     df['Review'].to_csv('Last_Assignment_Dataset/pii_analysis_transformed.csv', index=False)
